@@ -1,0 +1,32 @@
+{{ range .Values.repositories }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: argocd-external-secrets-{{ .url | sha256sum | trunc 12 }}
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: secret-store
+  target:
+    name: {{ .url | sha256sum | trunc 12 }}-repo
+    creationPolicy: Owner
+    template:
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      data:
+        type: {{ .type }}
+        url: {{ .url }}
+        username: {{ .username }}
+        password: '{{ printf "{{ .PASSWORD_GITHUB }}" }}'
+  data:
+    - secretKey: PASSWORD_GITHUB
+      remoteRef:
+        key: {{ .key }}
+              
+...
+{{ end }}
+

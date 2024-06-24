@@ -1,0 +1,27 @@
+project:
+  name: "cdc"
+  description: "Projet drupal de la cour des comptes"
+  sourceRepos:
+    - https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_cdc.git
+  destinations:
+    - server: https://34.79.26.233
+      namespace: "*"
+repositories:
+  - type: git
+    url: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_cdc.git
+    username: SV000236
+    key: ARGO_GITHUB_TOKEN
+applications:
+  - name: "cdc-integration"
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_cdc.git
+    repoRevision: develop
+    chart: .helm/cdc
+    destination:
+      server: https://34.79.26.233
+      namespace: "cdc-integration"
+    helm:
+      valueFiles:
+        - values.integration.yaml
+      parameters:
+        - name: drupal.image.tag
+          value: sha-${ARGOCD_APP_REVISION}

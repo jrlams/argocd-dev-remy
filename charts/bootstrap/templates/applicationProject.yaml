@@ -1,0 +1,33 @@
+{{ range .Values.applications }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}
+  namespace: argocd
+  # Cascade delete
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=false
+
+  project: default
+  source:
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/devops-argocd.git
+    targetRevision: dev
+    path: charts/project
+    helm:
+      valueFiles:
+      - {{ .valuesFile }}
+
+  destination: 
+    server: https://kubernetes.default.svc
+    namespace: argocd
+...
+{{ end }}

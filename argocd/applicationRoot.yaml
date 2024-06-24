@@ -1,0 +1,60 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  # Cascade delete
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=false
+
+  project: default
+  source:
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/devops-argocd.git
+    targetRevision: dev
+    path: charts/bootstrap
+    helm:
+      valueFiles:
+        - values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: argocd-external-secrets
+  namespace: argocd 
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: secret-store
+  target:
+    name: root-repo
+    creationPolicy: Owner    
+    template:
+      engineVersion: v2
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      data:
+        type: git
+        url: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/devops-argocd
+        username: SV000236
+        password: "{{ .PASSWORD_GITHUB }}"
+        
+  data:
+    - secretKey: PASSWORD_GITHUB
+      remoteRef:
+        key: ARGO_GITHUB_TOKEN
+...

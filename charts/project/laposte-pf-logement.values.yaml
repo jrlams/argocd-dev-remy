@@ -1,0 +1,56 @@
+project:
+
+  # Name of the project: lowercase whithout spaces (kebab-case)
+  name: laposte-pf-logement
+  description: "[PF] laposte pf logement"
+
+  # Allow manifests to deploy from any Git repos
+  sourceRepos:
+  - https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_laposte_pf_logement.git
+
+  # Only permit applications to deploy to specific namespace in the same cluster
+  destinations:
+  # - server: https://connectgateway.googleapis.com/v1beta1/projects/561688137130/locations/global/gkeMemberships/atos-dx-pf-logement-aca2-pf-logement-int
+  - server: https://34.76.151.179
+    namespace: '*'
+
+# Project repositories
+repositories:
+- type: git
+  url: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_laposte_pf_logement.git
+  username: SV000236
+  key: ARGO_GITHUB_TOKEN
+
+# Project charts (can be 1 umbrella chart, or multiple charts)
+applications:
+# deploy to recette
+  - name: pf-logement-recette
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_laposte_pf_logement.git
+    repoRevision: master
+    chart: .helm/pf-logement
+    destination:
+      #server: https://connectgateway.googleapis.com/v1beta1/projects/561688137130/locations/global/gkeMemberships/atos-dx-pf-logement-aca2-pf-logement-int
+      server: https://34.76.151.179
+      namespace: pf-recette
+    helm:
+      valueFiles:
+        - ./env/values.recette.yaml
+      parameters:
+        - name: drupal.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+
+# deploy to integration 
+  - name: pf-logement-integration
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_laposte_pf_logement.git
+    repoRevision: develop
+    chart: .helm/pf-logement
+    destination:
+      #server: https://connectgateway.googleapis.com/v1beta1/projects/561688137130/locations/global/gkeMemberships/atos-dx-pf-logement-aca2-pf-logement-int
+      server: https://34.76.151.179
+      namespace: pf-integration
+    helm:
+      valueFiles:
+        - ./env/values.integration.yaml
+      parameters:
+        - name: drupal.image.tag
+          value: sha-${ARGOCD_APP_REVISION}

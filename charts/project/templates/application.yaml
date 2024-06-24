@@ -1,0 +1,33 @@
+{{ range .Values.applications }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}
+  namespace: argocd
+  # Cascade delete
+  {{- if .annotations }}
+  annotations: {{ toYaml .annotations | nindent 4 }}
+  {{- end }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.project.name }}
+
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      
+  source:
+    path: {{ .chart }}
+    repoURL: {{ .repoURL }}
+    targetRevision: {{ .repoRevision }}
+    helm: {{ toYaml .helm | nindent 6 }}
+
+  destination: {{ toYaml .destination | nindent 4 }}
+
+...
+{{ end }}

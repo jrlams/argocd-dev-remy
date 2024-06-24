@@ -1,0 +1,58 @@
+project:
+
+  # Name of the project: lowercase whithout spaces (kebab-case)
+  name: paca-openemploi
+  description: "[D2I] Paca - Open Emploi"
+
+  # Allow manifests to deploy from any Git repos
+  sourceRepos:
+  - https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/d2i-paca-openemploi.git
+
+  # Only permit applications to deploy to specific namespace in the same cluster
+  destinations:
+  - server: https://34.79.209.71
+    #name: gke_atos-dx-pf-logement-aca2_europe-west1_pf-logement-int
+    namespace: '*'
+
+# Project repositories
+repositories:
+- type: git
+  url: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/d2i-paca-openemploi.git
+  username: SV000236
+  key: ARGO_GITHUB_TOKEN
+
+# Project charts (can be 1 umbrella chart, or multiple charts)
+applications:
+  - name: openemploi-integration
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/d2i-paca-openemploi.git
+    repoRevision: develop
+    chart: .helm/openemploi
+    destination:
+      server: https://34.79.209.71
+      namespace: oe-integration
+    helm:
+      valueFiles:
+        - values.yaml
+        - ../env/integration/oe.values.yaml
+      parameters:
+        - name: front.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+        - name: back.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+
+  - name: openemploi-recette
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/d2i-paca-openemploi.git
+    repoRevision: main
+    chart: .helm/openemploi
+    destination:
+      server: https://34.79.209.71
+      namespace: oe-recette
+    helm:
+      valueFiles:
+        - values.yaml
+        - ../env/recette/oe.values.yaml
+      parameters:
+        - name: front.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+        - name: back.image.tag
+          value: sha-${ARGOCD_APP_REVISION}

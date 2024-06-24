@@ -1,0 +1,83 @@
+project:
+  # Name of the project: lowercase whithout spaces (kebab-case)
+  name: dx-bonbon
+  description: "[dx] bonbon"
+
+  # Allow manifests to deploy from any Git repos
+  sourceRepos:
+    - https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_bonbon_cahier_banc.git
+    - https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_bonbon_sstart.git
+
+  # Only permit applications to deploy to specific namespace in the same cluster
+  destinations:
+    # - server: https://connectgateway.googleapis.com/v1beta1/projects/561688137130/locations/global/gkeMemberships/atos-dx-pf-logement-aca2-pf-logement-int
+    - server: https://34.38.39.166
+      namespace: "*"
+
+# Project repositories
+repositories:
+  - type: git
+    url: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_bonbon_cahier_banc.git
+    username: SV000236
+    key: ARGO_GITHUB_TOKEN
+  - type: git
+    url: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_bonbon_sstart.git
+    username: SV000236
+    key: ARGO_GITHUB_TOKEN
+
+# Project charts (can be 1 umbrella chart, or multiple charts)
+applications:
+  - name: dx-cahier-banc-integration
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_bonbon_cahier_banc.git
+    repoRevision: develop
+    chart: .helm/cahier-banc
+    annotations:
+      argocd-image-updater.argoproj.io/image-list: api=europe-docker.pkg.dev/atos-dx-bonbon-c82a/dx/cahier-banc:develop
+      argocd-image-updater.argoproj.io/api.update-strategy: digest
+    destination:
+      #server: https://connectgateway.googleapis.com/v1beta1/projects/561688137130/locations/global/gkeMemberships/atos-dx-pf-logement-aca2-pf-logement-int
+      server: https://34.38.39.166
+      namespace: cahier-banc-integration
+    helm:
+      valueFiles:
+        - values.integration.yaml
+      parameters:
+        - name: cahierBanc.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+
+  - name: dx-cahier-banc-recette
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_bonbon_cahier_banc.git
+    repoRevision: main
+    chart: .helm/cahier-banc
+    destination:
+      #server: https://connectgateway.googleapis.com/v1beta1/projects/561688137130/locations/global/gkeMemberships/atos-dx-pf-logement-aca2-pf-logement-int
+      server: https://34.38.39.166
+      namespace: cahier-banc-recette
+    helm:
+      valueFiles:
+        - values.recette.yaml
+      parameters:
+        - name: cahierBanc.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+
+  - name: dx-sstart-integration
+    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/dx_bonbon_sstart.git
+    repoRevision: develop
+    chart: .helm/sstart
+    destination:
+      server: https://34.38.39.166
+      namespace: sstart-integration
+    helm:
+      valueFiles:
+        - values.int.yaml
+      parameters:
+        - name: postgresql.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+        - name: frontend.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+        - name: jobManager.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+        - name: jobRunner.image.tag
+          value: sha-${ARGOCD_APP_REVISION}
+        - name: jobObserver.image.tag
+          value: sha-${ARGOCD_APP_REVISION}

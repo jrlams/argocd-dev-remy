@@ -1,0 +1,629 @@
+
+config:
+  params:
+    server.insecure: true
+
+controller:
+
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: argocd-fleet-admin@projets-pic-ts-sud-est-mtp.iam.gserviceaccount.com
+
+server:
+
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: argocd-fleet-admin@projets-pic-ts-sud-est-mtp.iam.gserviceaccount.com
+
+  extraArgs:
+    - --insecure
+
+  ingress:
+    # -- Enable an ingress resource for the Argo CD server
+    enabled: true
+    # -- Additional ingress annotations
+    annotations:
+      acme.cert-manager.io/http01-edit-in-place: "true"
+      cert-manager.io/cluster-issuer: letsencrypt-pic
+      kubernetes.io/tls-acme: "true"
+
+    # -- Additional ingress labels
+    labels: {}
+
+    # -- Defines which ingress controller will implement the resource
+    ingressClassName: "nginx"
+
+    # -- List of ingress hosts
+    ## Argo Ingress.
+    ## Hostnames must be provided if Ingress is enabled.
+    ## Secrets must be manually created in the namespace
+    hosts:
+      - argocd.sudest.cloud
+
+    # -- List of ingress paths
+    paths:
+      - /
+    pathType: Prefix
+    extraPaths: []
+
+    # -- Ingress TLS configuration
+    tls:
+      - secretName: argocd.sudest.cloud-tls
+        hosts:
+          - argocd.sudest.cloud
+
+    # -- Uses `server.service.servicePortHttps` instead `server.service.servicePortHttp`
+    https: false
+
+  # dedicated ingress for gRPC as documented at
+  # Ref: https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/
+  ingressGrpc:
+    # -- Enable an ingress resource for the Argo CD server for dedicated [gRPC-ingress]
+    enabled: false
+    # -- Setup up gRPC ingress to work with an AWS ALB
+    isAWSALB: false
+    # -- Additional ingress annotations for dedicated [gRPC-ingress]
+    annotations: {}
+    # -- Additional ingress labels for dedicated [gRPC-ingress]
+    labels: {}
+    # -- Defines which ingress controller will implement the resource [gRPC-ingress]
+    ingressClassName: "nginx"
+
+    # -- List of ingress hosts for dedicated [gRPC-ingress]
+    ## Argo Ingress.
+    ## Hostnames must be provided if Ingress is enabled.
+    ## Secrets must be manually created in the namespace
+    ##
+    hosts:
+      []
+      # - argocd.example.com
+
+    # -- List of ingress paths for dedicated [gRPC-ingress]
+    paths:
+      - /
+    # -- Ingress path type for dedicated [gRPC-ingress]. One of `Exact`, `Prefix` or `ImplementationSpecific`
+    pathType: Prefix
+    # -- Additional ingress paths for dedicated [gRPC-ingress]
+    extraPaths: []
+
+    # -- Ingress TLS configuration for dedicated [gRPC-ingress]
+    tls:
+      []
+      # - secretName: your-certificate-name
+      #   hosts:
+      #     - argocd.example.com
+
+    # -- Uses `server.service.servicePortHttps` instead `server.service.servicePortHttp`
+    https: false
+
+  GKEbackendConfig:
+    # -- Enable BackendConfig custom resource for Google Kubernetes Engine
+    enabled: false
+    # -- [BackendConfigSpec]
+    spec: {}
+  #  spec:
+  #    iap:
+  #      enabled: true
+  #      oauthclientCredentials:
+  #        secretName: argocd-secret
+
+  ## Create a Google Managed Certificate for use with the GKE Ingress Controller
+  ## https://cloud.google.com/kubernetes-engine/docs/how-to/managed-certs
+  GKEmanagedCertificate:
+    # -- Enable ManagedCertificate custom resource for Google Kubernetes Engine.
+    enabled: false
+    # -- Domains for the Google Managed Certificate
+    domains:
+      - argocd.example.com
+
+  ## Create a Google FrontendConfig Custom Resource, for use with the GKE Ingress Controller
+  ## https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-features#configuring_ingress_features_through_frontendconfig_parameters
+  GKEfrontendConfig:
+    # -- Enable FrontConfig custom resource for Google Kubernetes Engine
+    enabled: false
+    # -- [FrontendConfigSpec]
+    spec: {}
+  # spec:
+  #   redirectToHttps:
+  #     enabled: true
+  #     responseCodeName: RESPONSE_CODE
+
+## Argo Configs
+configs:
+  # General Argo CD configuration
+  ## Ref: https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/argocd-cm.yaml
+  cm:
+    # -- Create the argocd-cm configmap for [declarative setup]
+    create: true
+
+    # -- Annotations to be added to argocd-cm configmap
+    annotations: {}
+
+    # -- Argo CD's externally facing base URL (optional). Required when configuring SSO
+    url: "https://argocd.sudest.cloud"
+
+    # -- The name of tracking label used by Argo CD for resource pruning
+    # @default -- Defaults to app.kubernetes.io/instance
+    application.instanceLabelKey: argocd.argoproj.io/instance
+
+    # -- Enable logs RBAC enforcement
+    ## Ref: https://argo-cd.readthedocs.io/en/latest/operator-manual/upgrading/2.3-2.4/#enable-logs-rbac-enforcement
+    server.rbac.log.enforce.enable: false
+
+    # -- Enable exec feature in Argo UI
+    ## Ref: https://argo-cd.readthedocs.io/en/latest/operator-manual/rbac/#exec-resource
+    exec.enabled: false
+
+    # -- Enable local admin user
+    ## Ref: https://argo-cd.readthedocs.io/en/latest/faq/#how-to-disable-admin-user
+    admin.enabled: false
+
+    # -- Timeout to discover if a new manifests version got published to the repository
+    timeout.reconciliation: 180s
+
+    # -- Timeout to refresh application data as well as target manifests cache
+    timeout.hard.reconciliation: 0s
+
+    # the configuration to set up SSO with Google cloud
+    dex.config: |
+      connectors:
+      - config:
+          issuer: https://accounts.google.com
+          clientID: $argocd-generic-oauth-secret:clientID
+          clientSecret: $argocd-generic-oauth-secret:clientSecret
+        type: oidc
+        id: google
+        name: Google
+
+  # Argo CD RBAC policy configuration
+  ## Ref: https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
+  rbac:
+    # -- Create the argocd-rbac-cm configmap with ([Argo CD RBAC policy]) definitions.
+    # If false, it is expected the configmap will be created by something else.
+    # Argo CD will not work if there is no configmap created with the name above.
+    create: true
+
+    # -- Annotations to be added to argocd-rbac-cm configmap
+    annotations: {}
+
+    # -- The name of the default role which Argo CD will falls back to, when authorizing API requests (optional).
+    # If omitted or empty, users may be still be able to login, but will see no apps, projects, etc...
+    # policy.default: 'role:readonly'
+
+    # -- File containing user-defined policies and role definitions.
+    # @default -- `''` (See [values.yaml])
+    policy.csv: |
+
+      # definition of permissions for a devops
+      p, role:devops, applications, *, */*, allow
+
+      p, role:devops, clusters, get, *, allow
+      p, role:devops, clusters, create, *, allow
+
+      p, role:devops, repositories, create, *, allow
+      p, role:devops, repositories, update, *, allow
+
+      p, role:devops, projects, get, *, allow
+      p, role:devops, projects, create, *, allow
+      p, role:devops, projects, update, *, allow
+
+      # devops with permission
+      g, roger.guiligoussibayene@atos.net, role:devops
+
+
+      # users admin  
+      g, roger.guiligoussibayene@atos.net, role:admin
+      g, sylvain.pierrot@atos.net, role:admin
+      g, remi.gestin@atos.net, role:admin
+      g, rafael.anno@atos.net, role:admin
+      g, jean-remy.lamah@atos.net, role:admin
+      g, lucas.roig@atos.net, role:admin
+
+      # image updater
+      p, role:image-updater, applications, get, */*, allow
+      p, role:image-updater, applications, update, */*, allow
+      g, image-updater, role:image-updater
+
+
+
+    # -- OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
+    # The scope value can be a string, or a list of strings.
+    scopes: "[email, groups]"
+
+## Notifications controller
+notifications:
+  # -- Enable notifications controller
+  enabled: true
+
+  # -- Notifications controller name string
+  name: notifications-controller
+
+  # -- Argo CD dashboard url; used in place of {{.context.argocdUrl}} in templates
+  argocdUrl:
+
+  ## Notifications controller Pod Disruption Budget
+  ## Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+  pdb:
+    # -- Deploy a [PodDisruptionBudget] for the notifications controller
+    enabled: false
+    # -- Labels to be added to notifications controller pdb
+    labels: {}
+    # -- Annotations to be added to notifications controller pdb
+    annotations: {}
+    # -- Number of pods that are available after eviction as number or percentage (eg.: 50%)
+    # @default -- `""` (defaults to 0 if not specified)
+    minAvailable: ""
+    # -- Number of pods that are unavailable after eviction as number or percentage (eg.: 50%).
+    ## Has higher precedence over `notifications.pdb.minAvailable`
+    maxUnavailable: ""
+
+  ## Notifications controller image
+  image:
+    # -- Repository to use for the notifications controller
+    # @default -- `""` (defaults to global.image.repository)
+    repository: ""
+    # -- Tag to use for the notifications controller
+    # @default -- `""` (defaults to global.image.tag)
+    tag: ""
+    # -- Image pull policy for the notifications controller
+    # @default -- `""` (defaults to global.image.imagePullPolicy)
+    imagePullPolicy: ""
+
+  # -- Secrets with credentials to pull images from a private registry
+  # @default -- `[]` (defaults to global.imagePullSecrets)
+  imagePullSecrets: []
+
+  # -- Notifications controller log format. Either `text` or `json`
+  # @default -- `""` (defaults to global.logging.format)
+  logFormat: ""
+  # -- Notifications controller log level. One of: `debug`, `info`, `warn`, `error`
+  # @default -- `""` (defaults to global.logging.level)
+  logLevel: ""
+
+  # -- Extra arguments to provide to the notifications controller
+  extraArgs: []
+
+  # -- Additional container environment variables
+  extraEnv: []
+
+  # -- envFrom to pass to the notifications controller
+  # @default -- `[]` (See [values.yaml])
+  extraEnvFrom:
+    []
+    # - configMapRef:
+    #     name: config-map-name
+    # - secretRef:
+    #     name: secret-name
+
+  # -- Additional containers to be added to the notifications controller pod
+  ## Note: Supports use of custom Helm templates
+  extraContainers: []
+
+  # -- Init containers to add to the notifications controller pod
+  ## Note: Supports use of custom Helm templates
+  initContainers: []
+
+  # -- List of extra mounts to add (normally used with extraVolumes)
+  extraVolumeMounts: []
+
+  # -- List of extra volumes to add
+  extraVolumes: []
+
+  # -- Define user-defined context
+  ## For more information: https://argocd-notifications.readthedocs.io/en/stable/templates/#defining-user-defined-context
+  context:
+    {}
+    # region: east
+    # environmentName: staging
+
+  secret:
+    # -- Whether helm chart creates notifications controller secret
+    create: true
+
+    # -- key:value pairs of annotations to be added to the secret
+    annotations: {}
+
+    # -- Generic key:value pairs to be inserted into the secret
+    ## Can be used for templates, notification services etc. Some examples given below.
+    ## For more information: https://argocd-notifications.readthedocs.io/en/stable/services/overview/
+    items:
+      msteams-kubernetes: https://atos365.webhook.office.com/webhookb2/5be2de8c-dcbd-42a4-9a88-7d2b5b546831@33440fc6-b7c7-412c-bb73-0e70b0198d5a/IncomingWebhook/fe47b6f2b3c341e4aa6e26b940f78421/25cc157e-080c-4a94-9578-80ed771d0218
+      # grafana-apiKey:
+      #   # For more information: https://argocd-notifications.readthedocs.io/en/stable/services/grafana/
+
+  metrics:
+    # -- Enables prometheus metrics server
+    enabled: false
+    # -- Metrics port
+    port: 9001
+    service:
+      # -- Metrics service annotations
+      annotations: {}
+      # -- Metrics service labels
+      labels: {}
+      # -- Metrics service port name
+      portName: http-metrics
+    serviceMonitor:
+      # -- Enable a prometheus ServiceMonitor
+      enabled: false
+      # -- Prometheus ServiceMonitor selector
+      selector:
+        {}
+        # prometheus: kube-prometheus
+      # -- Prometheus ServiceMonitor labels
+      additionalLabels: {}
+      # -- Prometheus ServiceMonitor annotations
+      annotations: {}
+      # namespace: monitoring
+      # interval: 30s
+      # scrapeTimeout: 10s
+      # -- Prometheus ServiceMonitor scheme
+      scheme: ""
+      # -- Prometheus ServiceMonitor tlsConfig
+      tlsConfig: {}
+      # -- Prometheus [RelabelConfigs] to apply to samples before scraping
+      relabelings: []
+      # -- Prometheus [MetricRelabelConfigs] to apply to samples before ingestion
+      metricRelabelings: []
+
+  # -- Configures notification services such as slack, email or custom webhook
+  # @default -- See [values.yaml]
+  ## For more information: https://argocd-notifications.readthedocs.io/en/stable/services/overview/
+
+
+  notifiers:
+    service.webhook.msteams: |
+      url: $msteams-kubernetes
+
+  # -- Annotations to be applied to the notifications controller Deployment
+  deploymentAnnotations: {}
+
+  # -- Annotations to be applied to the notifications controller Pods
+  podAnnotations: {}
+
+  # -- Labels to be applied to the notifications controller Pods
+  podLabels: {}
+
+  # -- Resource limits and requests for the notifications controller
+  resources:
+    {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  # Notification controller container ports
+  containerPorts:
+    # -- Metrics container port
+    metrics: 9001
+
+  # -- [DNS configuration]
+  dnsConfig: {}
+  # -- Alternative DNS policy for notifications controller Pods
+  dnsPolicy: "ClusterFirst"
+
+  # -- Notification controller container-level security Context
+  # @default -- See [values.yaml]
+  containerSecurityContext:
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+
+  # -- [Node selector]
+  # @default -- `{}` (defaults to global.nodeSelector)
+  nodeSelector: {}
+
+  # -- [Tolerations] for use with node taints
+  # @default -- `[]` (defaults to global.tolerations)
+  tolerations: []
+
+  # -- Assign custom [affinity] rules
+  # @default -- `{}` (defaults to global.affinity preset)
+  affinity: {}
+
+  # -- Assign custom [TopologySpreadConstraints] rules to the application controller
+  # @default -- `[]` (defaults to global.topologySpreadConstraints)
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+  ## If labelSelector is left out, it will default to the labelSelector configuration of the deployment
+  topologySpreadConstraints:
+    []
+    # - maxSkew: 1
+    #   topologyKey: topology.kubernetes.io/zone
+    #   whenUnsatisfiable: DoNotSchedule
+
+  # -- Priority class for the notifications controller pods
+  # @default -- `""` (defaults to global.priorityClassName)
+  priorityClassName: ""
+
+  serviceAccount:
+    # -- Create notifications controller service account
+    create: true
+    # -- Notification controller service account name
+    name: argocd-notifications-controller
+    # -- Annotations applied to created service account
+    annotations: {}
+    # -- Labels applied to created service account
+    labels: {}
+    # -- Automount API credentials for the Service Account
+    automountServiceAccountToken: true
+
+  cm:
+    # -- Whether helm chart creates notifications controller config map
+    create: true
+
+  # -- Contains centrally managed global application subscriptions
+  ## For more information: https://argocd-notifications.readthedocs.io/en/stable/subscriptions/
+  subscriptions:
+    - recipients:
+        - msteams
+      triggers:
+        - on-sync-succeeded
+        - on-deployed
+        - on-health-degraded
+        - on-sync-failed
+        - on-sync-running
+        - on-sync-status-unknown
+
+  # -- The notification template is used to generate the notification content
+  ## For more information: https://argocd-notifications.readthedocs.io/en/stable/templates/
+  templates:
+    template.app-sync-succeeded: |
+      teams:
+       # themeColor: "#000080"
+        
+      webhook:
+        msteams:
+          method: POST 
+          body: |     
+            {
+              "@type": "MessageCard",
+              "@context": "http://schema.org/extensions",
+              "themeColor": "0076D7",
+              "summary": "{{.app.spec.destination.namespace}}/{{.app.metadata.name}} sync status is {{.app.status.sync.status}}",
+              "sections": [
+                {
+                  "activityTitle": "{{.app.spec.destination.namespace}}/{{.app.metadata.name}} sync status is {{.app.status.sync.status}}",
+                  "facts": [
+                    {
+                      "name": "Repository",
+                      "value": "{{.app.spec.source.repoURL}}"
+                    },
+                    {
+                      "name": "Synced at",
+                      "value": "{{.app.status.operationState.finishedAt}}"
+                    },
+                    {
+                      "name": "Sync status",
+                      "value": "{{.app.status.sync.status}}"
+                    }
+                  ],
+                  "markdown": true
+                }
+              ],
+              "potentialAction": [
+                {
+                  "@type": "OpenUri",
+                  "name": "Details",
+                  "targets": [
+                    {
+                      "os": "default",
+                      "uri": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true"
+                    }
+                  ]
+                }
+              ]
+            } 
+
+  # -- The trigger defines the condition when the notification should be sent
+  ## For more information: https://argocd-notifications.readthedocs.io/en/stable/triggers/
+
+  triggers:
+    trigger.on-sync-succeeded: |
+      - description: Application syncing has succeeded
+        send:
+        - app-sync-succeeded
+        when: app.status.operationState.phase in ['Succeeded']
+
+    trigger.on-deployed: |
+      - description: Application is synced and healthy. Triggered once per commit.
+        oncePer: app.status.sync.revision
+        send:
+        - app-deployed
+        when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+
+    trigger.on-health-degraded: |
+      - description: Application has degraded
+        send:
+        - app-health-degraded
+        when: app.status.health.status == 'Degraded'
+
+    trigger.on-sync-failed: |
+      - description: Application syncing has failed
+        send:
+        - app-sync-failed
+        when: app.status.operationState.phase in ['Error', 'Failed']
+
+    trigger.on-sync-running: |
+      - description: Application is being synced
+        send:
+        - app-sync-running
+        when: app.status.operationState.phase in ['Running']
+
+    trigger.on-sync-status-unknown: |
+      - description: Application status is 'Unknown'
+        send:
+        - app-sync-status-unknown
+        when: app.status.sync.status == 'Unknown'
+    
+    # For more information: https://argocd-notifications.readthedocs.io/en/stable/triggers/#default-triggers
+
+    # # defaultTriggers: |
+    # #   - on-sync-running
+    # #   - on-sync-succeeded
+
+## add plugin helmfile for argocd
+ 
+# ## Repo Server
+# repoServer:
+
+#   volumes:
+#   - name: age-secret-keys
+#     secret:
+#       secretName: argocd-age-secret-keys
+#   - emptyDir: {}
+#     name: helmfile-cmp-tmp
+
+#   extraContainers:
+#   - name: helmfile-plugin
+#     image: travisghansen/argo-cd-helmfile:latest
+#     command: [/var/run/argocd/argocd-cmp-server]
+#     env:
+#     - name: SOPS_AGE_KEY_FILE
+#       value: /sops/age/keys.txt
+#     securityContext:
+#       runAsNonRoot: true
+#       runAsUser: 999
+#     volumeMounts:
+#       - mountPath: /sops/age
+#         name: age-secret-keys
+#       - mountPath: /var/run/argocd
+#         name: var-files
+#       - mountPath: /home/argocd/cmp-server/plugins
+#         name: plugins
+#       - mountPath: /tmp
+#         name: helmfile-cmp-tmp
+
+dex:
+  livenessProbe:
+    # -- Enable Kubernetes liveness probe for Dex >= 2.28.0
+    enabled: true
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+  readinessProbe:
+    # -- Enable Kubernetes readiness probe for Dex >= 2.28.0
+    enabled: true
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1

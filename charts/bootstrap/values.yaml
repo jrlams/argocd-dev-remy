@@ -1,0 +1,11 @@
+applications:
+  - name: root-pf-logement
+    valuesFile: laposte-pf-logement.values.yaml
+  - name: root-paca-openemploi
+    valuesFile: openemploi.values.yaml
+  - name: root-ugap-ucloud
+    valuesFile: ugap-ucloud.values.yaml
+  - name: root-dx-bonbon
+    valuesFile: dx_bonbon.values.yaml
+  - name: root-dx-cdc
+    valuesFile: dx_cdc.values.yaml
