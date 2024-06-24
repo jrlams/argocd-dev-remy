@@ -19,8 +19,8 @@ spec:
 
   project: default
   source:
-    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/devops-argocd.git
-    targetRevision: dev
+    repoURL: https://github.com/jrlams/argocd-dev-remy.git
+    targetRevision: testr
     path: charts/project
     helm:
       valueFiles:

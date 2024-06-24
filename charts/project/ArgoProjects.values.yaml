@@ -1,0 +1,27 @@
+project:
+  name: "cdc"
+  description: "Projet utilisant les charts"
+  sourceRepos:
+    - https://github.com/jrlams/ArgoProjects.git
+  destinations: 
+    - server: https://kubernetes.default.svc
+      namespace: "argocd"
+repositories:
+  - type: git
+    url: https://github.com/jrlams/ArgoProjects.git
+    # username: jrlams
+    # key: ARGO_GITHUB_TOKEN
+applications:
+  - name: "argo-with-helm-arc"
+    repoURL: https://github.com/jrlams/ArgoProjects.git
+    repoRevision: main
+    # chart: .helm/cdc
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: "argocd"
+    # helm:
+    #   valueFiles:
+    #     - values.integration.yaml
+    #   parameters:
+    #     - name: drupal.image.tag
+    #       value: sha-${ARGOCD_APP_REVISION}

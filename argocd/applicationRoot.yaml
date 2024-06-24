@@ -18,8 +18,8 @@ spec:
 
   project: default
   source:
-    repoURL: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/devops-argocd.git
-    targetRevision: dev
+    repoURL: https://github.com/jrlams/argocd-dev-remy.git
+    targetRevision: testr
     path: charts/bootstrap
     helm:
       valueFiles:
@@ -28,6 +28,7 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
+    
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
@@ -49,8 +50,8 @@ spec:
           argocd.argoproj.io/secret-type: repository
       data:
         type: git
-        url: https://github.gsissc.myatos.net/FR-MTP-TSSUDEST/devops-argocd
-        username: SV000236
+        url: https://github.com/jrlams/argocd-dev-remy.git
+        username: jrlams
         password: "{{ .PASSWORD_GITHUB }}"
         
   data:
